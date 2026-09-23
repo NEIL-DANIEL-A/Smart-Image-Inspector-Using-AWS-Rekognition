@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Analysis Results - Smart Image Inspector</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>🔍 Inspection Results</h1>
+      <p>Multi-feature AWS Rekognition analysis (stateless in-memory)</p>
+    </header>
+
+    <!-- Moderation Status Banner -->
+    {% if moderation_labels and moderation_labels|length > 0 %}
+      <div class="banner banner-flagged">
+        <span>⚠️ Flagged:</span>
+        <span>
+          {% for mod in moderation_labels %}
+            {{ mod.Name }} ({{ "%.1f"|format(mod.Confidence) }}%){% if not loop.last %}, {% endif %}
+          {% endfor %}
+        </span>
+      </div>
+    {% else %}
+      <div class="banner banner-safe">
+        <span>Content looks safe ✅ (detect_moderation_labels)</span>
+      </div>
+    {% endif %}
+
+    <!-- Top Grid: Preview & Detect Labels -->
+    <div class="results-grid">
+      <!-- Image Preview -->
+      <section class="card image-preview-card">
+        <div class="card-title">
+          <span>Uploaded Preview</span>
+        </div>
+        <img class="image-preview" src="{{ image_data_url }}" alt="Uploaded preview">
+      </section>
+
+      <!-- Detected Labels -->
+      <section class="card labels-card">
+        <div class="card-title">
+          <span>Detected Labels</span>
+          <span class="badge-count">{{ labels|length }} found</span>
+        </div>
+        {% if labels and labels|length > 0 %}
+          <div class="labels-list">
+            {% for label in labels %}
+              <div class="label-item">
+                <div class="label-meta">
+                  <span class="label-name">{{ label.Name }}</span>
+                  <span class="label-score">{{ "%.1f"|format(label.Confidence) }}%</span>
+                </div>
+                <div class="progress-track">
+                  <div class="progress-fill" style="width: calc({{ label.Confidence }} * 1%);"></div>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <p style="color: var(--text-muted);">No labels met the minimum confidence threshold of 75%.</p>
+        {% endif %}
+      </section>
+    </div>
+
+    <!-- Secondary Features Grid: Faces, Celebrities, Text OCR -->
+    <div class="features-grid">
+      <!-- Faces Analysis Card -->
+      <section class="card">
+        <div class="card-title">
+          <span>👤 Facial Analysis</span>
+          <span class="badge-count">{{ face_details|length }} face(s)</span>
+        </div>
+        {% if face_details and face_details|length > 0 %}
+          <div class="face-list">
+            {% for face in face_details %}
+              <div class="face-card">
+                <div class="face-card-header">Face #{{ loop.index }} ({{ face.confidence }}% conf.)</div>
+                <div class="face-details-grid">
+                  <div><strong>Age:</strong> ~{{ face.age_range }} yrs</div>
+                  <div><strong>Gender:</strong> {{ face.gender }}</div>
+                  <div><strong>Emotion:</strong> {{ face.emotion }} ({{ face.emotion_confidence }}%)</div>
+                  <div><strong>Smile:</strong> {{ "Yes 😊" if face.smile else "No" }}</div>
+                </div>
+                <div style="margin-top: 0.5rem;">
+                  {% if face.eyeglasses %}<span class="face-badge">👓 Eyeglasses</span>{% endif %}
+                  {% if face.sunglasses %}<span class="face-badge">🕶️ Sunglasses</span>{% endif %}
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <p style="color: var(--text-muted); font-size: 0.95rem;">No faces detected in this image.</p>
+        {% endif %}
+      </section>
+
+      <!-- Celebrity Recognition Card -->
+      <section class="card">
+        <div class="card-title">
+          <span>⭐ Celebrities</span>
+          <span class="badge-count">{{ celebrities|length }} match(es)</span>
+        </div>
+        {% if celebrities and celebrities|length > 0 %}
+          <div class="celeb-list">
+            {% for celeb in celebrities %}
+              <div class="celeb-item">
+                <div>
+                  <div class="celeb-name">{{ celeb.name }}</div>
+                  {% if celeb.urls and celeb.urls|length > 0 %}
+                    <a class="celeb-link" href="https://{{ celeb.urls[0]|replace('https://', '')|replace('http://', '') }}" target="_blank" rel="noopener">Learn more ↗</a>
+                  {% endif %}
+                </div>
+                <span class="label-score">{{ celeb.confidence }}%</span>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <p style="color: var(--text-muted); font-size: 0.95rem;">No recognized celebrities found.</p>
+        {% endif %}
+      </section>
+
+      <!-- Text Detection (OCR) Card -->
+      <section class="card">
+        <div class="card-title">
+          <span>📝 Text (OCR)</span>
+          <span class="badge-count">{{ text_detections|length }} line(s)</span>
+        </div>
+        {% if text_detections and text_detections|length > 0 %}
+          <div class="text-list">
+            {% for text in text_detections %}
+              <div class="text-item">
+                <span class="text-content">"{{ text.DetectedText }}"</span>
+                <span class="text-confidence">{{ "%.1f"|format(text.Confidence) }}%</span>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <p style="color: var(--text-muted); font-size: 0.95rem;">No readable text detected.</p>
+        {% endif %}
+      </section>
+    </div>
+
+    <!-- Collapsible Raw JSON Teaching Section -->
+    <section class="card">
+      <div class="card-title">
+        <span>🔬 Raw AWS Rekognition JSON Payloads</span>
+      </div>
+      <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 0.75rem;">
+        Examine the exact response payloads returned from all 5 AWS API calls:
+      </p>
+
+      <details>
+        <summary>▶ detect_labels()</summary>
+        <pre class="json-output"><code>{{ raw_jsons['detect_labels'] }}</code></pre>
+      </details>
+
+      <details>
+        <summary>▶ detect_moderation_labels()</summary>
+        <pre class="json-output"><code>{{ raw_jsons['detect_moderation_labels'] }}</code></pre>
+      </details>
+
+      <details>
+        <summary>▶ detect_text() (OCR)</summary>
+        <pre class="json-output"><code>{{ raw_jsons['detect_text'] }}</code></pre>
+      </details>
+
+      <details>
+        <summary>▶ detect_faces() (Attributes: ALL)</summary>
+        <pre class="json-output"><code>{{ raw_jsons['detect_faces'] }}</code></pre>
+      </details>
+
+      <details>
+        <summary>▶ recognize_celebrities()</summary>
+        <pre class="json-output"><code>{{ raw_jsons['recognize_celebrities'] }}</code></pre>
+      </details>
+    </section>
+
+    <div class="actions-bar">
+      <a href="{{ url_for('index') }}" class="btn-secondary">← Analyze Another Image</a>
+    </div>
+  </div>
+</body>
+</html>

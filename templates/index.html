@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Image Inspector - AWS Rekognition Demo</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>🔍 Smart Image Inspector</h1>
+      <p>Instant computer vision analysis powered directly by AWS Rekognition</p>
+    </header>
+
+    {% if error %}
+    <div class="error-banner">
+      <strong>Error:</strong> {{ error }}
+    </div>
+    {% endif %}
+
+    <main class="card">
+      <form class="upload-form" action="{{ url_for('analyze') }}" method="POST" enctype="multipart/form-data">
+        <label for="image_file" class="file-dropzone">
+          <svg width="48" height="48" fill="none" stroke="#38bdf8" stroke-width="1.5" viewBox="0 0 24 24" style="margin: 0 auto; display: block;">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z" />
+          </svg>
+          <p style="margin-top: 0.75rem; font-weight: 500;">Select an image to inspect</p>
+          <p style="font-size: 0.85rem; color: #94a3b8;">Supports JPG, PNG (Max 5MB raw Rekognition payload limit)</p>
+          <input type="file" id="image_file" name="image" accept="image/jpeg,image/png" required>
+        </label>
+
+        <button type="submit" class="btn-primary">Inspect with Rekognition</button>
+      </form>
+    </main>
+  </div>
+</body>
+</html>
